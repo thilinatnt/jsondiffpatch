@@ -8,9 +8,14 @@ const OPERATIONS = {
 };
 
 class JSONFormatter extends BaseFormatter {
-  constructor() {
+
+  constructor(options) {
     super();
     this.includeMoveDestinations = true;
+
+    if (typeof options !== 'undefined') {
+      this.includeReplacePreviousValue = options.includeReplacePreviousValue;
+    }
   }
 
   prepareContext(context) {
@@ -18,13 +23,16 @@ class JSONFormatter extends BaseFormatter {
     context.result = [];
     context.path = [];
     context.pushCurrentOp = function(obj) {
-      const {op, value} = obj;
+      const {op, value, previousValue} = obj;
       const val = {
         op,
         path: this.currentPath(),
       };
       if (typeof value !== 'undefined') {
         val.value = value;
+      }
+      if (this.includeReplacePreviousValue === true && typeof previousValue !== 'undefined') {
+          val.previousValue = previousValue;
       }
       this.result.push(val);
     };
@@ -80,7 +88,7 @@ class JSONFormatter extends BaseFormatter {
   }
 
   format_modified(context, delta) {
-    context.pushCurrentOp({op: OPERATIONS.replace, value: delta[1]});
+    context.pushCurrentOp({op: OPERATIONS.replace, value: delta[1], previousValue: delta[0]});
   }
 
   format_deleted(context) {
@@ -163,9 +171,9 @@ const reorderOps = diff => {
 
 let defaultInstance;
 
-export const format = (delta, left) => {
+export const format = (delta, left, options) => {
   if (!defaultInstance) {
-    defaultInstance = new JSONFormatter();
+    defaultInstance = new JSONFormatter(options);
   }
   return reorderOps(defaultInstance.format(delta, left));
 };
